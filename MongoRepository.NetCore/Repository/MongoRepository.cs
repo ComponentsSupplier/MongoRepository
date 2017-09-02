@@ -18,9 +18,9 @@
         where T : IEntity<TKey>
     {
         /// <summary>
-        /// MongoCollection field.
+        /// IMongoCollection field.
         /// </summary>
-        protected internal MongoCollection<T> collection;
+        protected internal IMongoCollection<T> collection;
 
         /// <summary>
         /// Initializes a new instance of the MongoRepository class.
@@ -79,7 +79,7 @@
         /// for most purposes you can use the MongoRepositoryManager&lt;T&gt;
         /// </remarks>
         /// <value>The Mongo collection (to perform advanced operations).</value>
-        public MongoCollection<T> Collection
+        public IMongoCollection<T> Collection
         {
             get { return this.collection; }
         }
@@ -89,7 +89,7 @@
         /// </summary>
         public string CollectionName
         {
-            get { return this.collection.Name; }
+            get { return this.collection.CollectionNamespace.CollectionName; }
         }
 
         /// <summary>
@@ -104,7 +104,9 @@
                 return this.GetById(new ObjectId(id as string));
             }
 
-            return this.collection.FindOneByIdAs<T>(BsonValue.Create(id));
+            var builder = Builders<T>.Filter;
+            var filter = builder.Eq(tobject => tobject.Id, id);
+            return this.collection.Find<T>(filter).FirstOrDefault();
         }
 
         /// <summary>
@@ -114,7 +116,7 @@
         /// <returns>The Entity T.</returns>
         public virtual T GetById(ObjectId id)
         {
-            return this.collection.FindOneByIdAs<T>(id);
+            return this.collection.Find<T>(Builders<T>.Filter.Eq("_id",id)).SingleOrDefault();
         }
 
         /// <summary>
@@ -124,7 +126,7 @@
         /// <returns>The added entity including its new ObjectId.</returns>
         public virtual T Add(T entity)
         {
-            this.collection.Insert<T>(entity);
+            this.collection.InsertOne(entity);
 
             return entity;
         }
@@ -135,7 +137,7 @@
         /// <param name="entities">The entities of type T.</param>
         public virtual void Add(IEnumerable<T> entities)
         {
-            this.collection.InsertBatch<T>(entities);
+            this.collection.InsertMany(entities);
         }
 
         /// <summary>
@@ -145,7 +147,8 @@
         /// <returns>The updated entity.</returns>
         public virtual T Update(T entity)
         {
-            this.collection.Save<T>(entity);
+            var filter = Builders<T>.Filter.Eq("Id", entity.Id);
+            this.collection.ReplaceOne(filter, entity);
 
             return entity;
         }
@@ -158,7 +161,8 @@
         {
             foreach (T entity in entities)
             {
-                this.collection.Save<T>(entity);
+                var filter = Builders<T>.Filter.Eq("Id", entity.Id);
+                this.collection.ReplaceOne(filter, entity);
             }
         }
 
@@ -170,11 +174,11 @@
         {
             if (typeof(T).IsSubclassOf(typeof(Entity)))
             {
-                this.collection.Remove(Query.EQ("_id", new ObjectId(id as string)));
+                this.collection.DeleteOne(Builders<T>.Filter.Eq("_id", new ObjectId(id as string)));
             }
             else
             {
-                this.collection.Remove(Query.EQ("_id", BsonValue.Create(id)));
+                this.collection.DeleteOne(Builders<T>.Filter.Eq("_id", BsonValue.Create(id)));
             }
         }
 
@@ -184,7 +188,7 @@
         /// <param name="id">The ObjectId of the entity.</param>
         public virtual void Delete(ObjectId id)
         {
-            this.collection.Remove(Query.EQ("_id", id));
+            this.collection.DeleteOne(Builders<T>.Filter.Eq("_id", id));
         }
 
         /// <summary>
@@ -213,7 +217,7 @@
         /// </summary>
         public virtual void DeleteAll()
         {
-            this.collection.RemoveAll();
+            this.collection.DeleteMany(new BsonDocument());
         }
 
         /// <summary>
@@ -222,7 +226,7 @@
         /// <returns>Count of entities in the collection.</returns>
         public virtual long Count()
         {
-            return this.collection.Count();
+            return this.collection.Count(new BsonDocument());
         }
 
         /// <summary>
@@ -233,51 +237,6 @@
         public virtual bool Exists(Expression<Func<T, bool>> predicate)
         {
             return this.collection.AsQueryable<T>().Any(predicate);
-        }
-
-        /// <summary>
-        /// Lets the server know that this thread is about to begin a series of related operations that must all occur
-        /// on the same connection. The return value of this method implements IDisposable and can be placed in a using
-        /// statement (in which case RequestDone will be called automatically when leaving the using statement). 
-        /// </summary>
-        /// <returns>A helper object that implements IDisposable and calls RequestDone() from the Dispose method.</returns>
-        /// <remarks>
-        ///     <para>
-        ///         Sometimes a series of operations needs to be performed on the same connection in order to guarantee correct
-        ///         results. This is rarely the case, and most of the time there is no need to call RequestStart/RequestDone.
-        ///         An example of when this might be necessary is when a series of Inserts are called in rapid succession with
-        ///         SafeMode off, and you want to query that data in a consistent manner immediately thereafter (with SafeMode
-        ///         off the writes can queue up at the server and might not be immediately visible to other connections). Using
-        ///         RequestStart you can force a query to be on the same connection as the writes, so the query won't execute
-        ///         until the server has caught up with the writes.
-        ///     </para>
-        ///     <para>
-        ///         A thread can temporarily reserve a connection from the connection pool by using RequestStart and
-        ///         RequestDone. You are free to use any other databases as well during the request. RequestStart increments a
-        ///         counter (for this thread) and RequestDone decrements the counter. The connection that was reserved is not
-        ///         actually returned to the connection pool until the count reaches zero again. This means that calls to
-        ///         RequestStart/RequestDone can be nested and the right thing will happen.
-        ///     </para>
-        ///     <para>
-        ///         Use the connectionstring to specify the readpreference; add "readPreference=X" where X is one of the following
-        ///         values: primary, primaryPreferred, secondary, secondaryPreferred, nearest.
-        ///         See http://docs.mongodb.org/manual/applications/replication/#read-preference
-        ///     </para>
-        /// </remarks>
-        public virtual IDisposable RequestStart()
-        {
-            return this.collection.Database.RequestStart();
-        }
-
-        /// <summary>
-        /// Lets the server know that this thread is done with a series of related operations.
-        /// </summary>
-        /// <remarks>
-        /// Instead of calling this method it is better to put the return value of RequestStart in a using statement.
-        /// </remarks>
-        public virtual void RequestDone()
-        {
-            this.collection.Database.RequestDone();
         }
 
         #region IQueryable<T>
