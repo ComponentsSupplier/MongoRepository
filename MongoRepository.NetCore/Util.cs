@@ -3,6 +3,7 @@
     using MongoDB.Driver;
     using System;
     using Microsoft.Extensions.Configuration;
+    using System.Security.Authentication;
 
     /// <summary>
     /// Internal miscellaneous utility functions.
@@ -34,7 +35,13 @@
         /// <returns>Returns a MongoDatabase from the specified url.</returns>
         private static IMongoDatabase GetDatabaseFromUrl(MongoUrl url)
         {
-            var client = new MongoClient(url);
+            var settings = MongoClientSettings.FromUrl(url);
+            if (settings.UseSsl)
+            {
+                settings.SslSettings = new SslSettings();
+                settings.SslSettings.EnabledSslProtocols = SslProtocols.Tls12;
+            }
+            var client = new MongoClient(settings);
             return client.GetDatabase(url.DatabaseName);
         }
 
