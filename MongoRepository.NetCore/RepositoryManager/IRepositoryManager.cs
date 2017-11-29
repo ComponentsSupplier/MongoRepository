@@ -30,6 +30,11 @@
         void Drop();
 
         /// <summary>
+        /// Drops the database.
+        /// </summary>
+        void DropDatabase();
+
+        /// <summary>
         /// Tests whether the repository is capped.
         /// </summary>
         /// <returns>Returns true when the repository is capped, false otherwise.</returns>

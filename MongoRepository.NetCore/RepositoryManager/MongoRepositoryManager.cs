@@ -86,6 +86,15 @@
         }
 
         /// <summary>
+        /// Drops the database.
+        /// </summary>
+        public virtual void DropDatabase()
+        {
+            var databaseName = this.collection.Database.DatabaseNamespace.DatabaseName;
+            this.collection.Database.Client.DropDatabase(databaseName);
+        }
+
+        /// <summary>
         /// Tests whether the repository is capped.
         /// </summary>
         /// <returns>Returns true when the repository is capped, false otherwise.</returns>
@@ -102,7 +111,6 @@
         public virtual void DropIndex(string keyname)
         {
             this.collection.Indexes.DropOne(keyname);
-            this.collection.Indexes.List().ToList();
         }
 
         /// <summary>
