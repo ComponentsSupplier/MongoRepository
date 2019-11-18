@@ -225,7 +225,7 @@
         /// <returns>Count of entities in the collection.</returns>
         public virtual long Count()
         {
-            return this.collection.Count(new BsonDocument());
+            return this.collection.CountDocuments(new BsonDocument());
         }
 
         /// <summary>

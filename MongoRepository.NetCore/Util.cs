@@ -36,7 +36,7 @@
         private static IMongoDatabase GetDatabaseFromUrl(MongoUrl url)
         {
             var settings = MongoClientSettings.FromUrl(url);
-            if (settings.UseSsl)
+            if (settings.UseTls)
             {
                 settings.SslSettings = new SslSettings();
                 settings.SslSettings.EnabledSslProtocols = SslProtocols.Tls12;
