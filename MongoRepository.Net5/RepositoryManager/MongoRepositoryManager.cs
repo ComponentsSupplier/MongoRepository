@@ -1,4 +1,4 @@
-﻿namespace MongoRepository.NetCore
+﻿namespace MongoRepository.Net5
 {
     using MongoDB.Driver;
     // using MongoDB.Driver.Builders;
